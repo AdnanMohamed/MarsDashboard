@@ -1,15 +1,33 @@
-let store = Immutable.Map({
-  rovers: ["Curiosity", "Opportunity", "Spirit"],
+// let store = Immutable.Map({
+//   rovers: ["Curiosity", "Opportunity", "Spirit"], // available rover names
+//   selectedRover: "", // which of the existing rovers is selected by the user
+//   rover: {}, // the information of the selected rover
+//   photos: [], // an array of photos containing the source of the photo and other info about each photo.
+// });
+
+// State Initialization
+// Initialize the application state with Immutable.Map to maintain an immutable application state.
+const store = Immutable.Map({
+  // 'rovers' holds the names of available Mars rovers.
+  // Users can select a rover to view its information and latest photos.
+  rovers: Immutable.List(["Curiosity", "Opportunity", "Spirit"]),
+
+  // 'selectedRover' stores the name of the rover selected by the user.
+  // It's initially empty as no selection is made at the start.
   selectedRover: "",
-  rover: {},
-  photos: [],
+
+  // 'rover' contains information about the selected rover such as its launch date,
+  // landing date, and current status. Each property is a string.
+  rover: Immutable.Map({ launchDate: "", landingDate: "", status: "" }),
+
+  // 'photos' is an array of photo objects from the selected rover.
+  // Each object includes the photo's source URL, camera name, and the date it was taken.
+  photos: Immutable.List([]),
 });
 
-// add our markup to the page
 const root = document.getElementById("root");
 
 const updateStore = (store, newState) => {
-  //   store = Object.assign(store, newState);
   store = store.merge(newState);
   render(root, store.toJS());
 };
@@ -26,13 +44,6 @@ const updateSelectedRover = (roverName) => {
 
 const render = (root, state) => {
   root.innerHTML = App(state);
-};
-
-const getRoverData = (rover) => {
-  return fetch(`http://localhost:3000/rovers/${rover}`)
-    .then((res) => res.json())
-    .then((obj) => obj.photos)
-    .then((data) => data.slice(0, 5));
 };
 
 const fetchRoverData = (selectedRover) => {
@@ -53,8 +64,6 @@ const fetchRoverData = (selectedRover) => {
           };
         }),
       };
-      // console.log(newState);
-      //updateStore(store, newState);
       return newState;
     })
     .catch(console.error);
@@ -96,33 +105,6 @@ const App = (state) => {
 
 // ------------------------------------------------------  COMPONENTS
 
-// Example of a pure function that renders infomation requested from the backend
-const ImageOfTheDay = (apod) => {
-  // If image does not already exist, or it is not from today -- request it again
-  const today = new Date();
-  const photodate = new Date(apod.date);
-  // console.log(photodate.getDate(), today.getDate());
-
-  // console.log(photodate.getDate() === today.getDate());
-  if (!apod || apod.date === today.getDate()) {
-    getImageOfTheDay(store);
-  }
-
-  // check if the photo of the day is actually type video!
-  if (apod.media_type === "video") {
-    return `
-            <p>See today's featured video <a href="${apod.url}">here</a></p>
-            <p>${apod.title}</p>
-            <p>${apod.explanation}</p>
-        `;
-  } else {
-    return `
-            <img src="${apod.image.url}" height="350px" width="100%" />
-            <p>${apod.image.explanation}</p>
-        `;
-  }
-};
-
 const PageTitle = (title) => {
   return `<h1 class="text-center py-3">${title.toUpperCase()}</h1>`;
 };
@@ -160,25 +142,12 @@ const RenderCards = (roverPhotos) => {
   return result;
 };
 
-// const updateSelectedRover = (rover) => {
-//   if (
-//     store.rovers.findIndex((r) => r.toUpperCase() == rover.toUpperCase()) === -1
-//   ) {
-//     throw new Error(`The rover must be one of ${store.rovers}`);
-//   }
-//   store.selectedRover = rover;
-//   updateRoverData(store);
-// };
-
 const selectOnChange = (e) => {
   const roverName = e.target.value;
-  //   store = roverName;
-  //   fetchRoverData(store.get("selectedRover"));
   updateSelectedRover(roverName);
 };
 
 const RoversSelector = (rovers, selected) => {
-  //console.log(selected);
   return `
         <div id="selectorContainer" class="row mt-5 mb-3">
             <div class="col-md-4">
@@ -200,13 +169,9 @@ const RoversSelector = (rovers, selected) => {
 
 // ------------------------------------------------------  API CALLS
 
-// Example API call
-const getImageOfTheDay = (state) => {
-  let { apod } = state;
-
-  fetch(`http://localhost:3000/apod`)
+const getRoverData = (rover) => {
+  return fetch(`http://localhost:3000/rovers/${rover}`)
     .then((res) => res.json())
-    .then((apod) => updateStore(store, { apod }));
-
-  return data;
+    .then((obj) => obj.photos)
+    .then((data) => data.slice(0, 5));
 };
