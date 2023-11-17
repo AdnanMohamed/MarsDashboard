@@ -18,7 +18,38 @@ const store = Immutable.Map({
   photos: Immutable.List([]),
 });
 
-const root = document.getElementById("root");
+const root = document.getElementById("root"); // get the root to add HTML content to.
+
+/**
+ * Main function to construct and render the application's UI.
+ *
+ * @param {Object} state - The current state of the application, including rover data and
+ *                         photos.
+ * @returns {string} HTML string representing the entire application UI.
+ */
+const App = (state) => {
+  let { rovers, selectedRover, rover, photos } = state;
+  return `
+      ${PageTitle("mars dashboard")}
+      ${RoversSelector(rovers, selectedRover)}
+      ${RoverInfo(rover)}
+      ${RoverPhotoGallery(photos)}
+      `;
+};
+
+/**
+ * Renders the application UI in the specified root element.
+ *
+ * This function is responsible for rendering the entire application UI based on the current
+ * state. It dynamically generates HTML content and inserts it into the root DOM element.
+ *
+ * @param {HTMLElement} root - The root DOM element where the application UI is rendered.
+ * @param {Object} state - The current state of the application.
+ *
+ */
+const render = (root, state) => {
+  root.innerHTML = App(state);
+};
 
 /**
  * Updates the application's state and re-renders the UI.
@@ -38,45 +69,9 @@ const root = document.getElementById("root");
  * Return Value:
  * - No return value.
  */
-
 const updateStore = (store, newState) => {
   store = store.merge(newState);
   render(root, store.toJS());
-};
-
-/**
- * Updates the selected rover in the state and fetches its data.
- *
- * This function is triggered when a user selects a rover from the UI. It fetches data for the
- * selected rover and updates the application state with this new data, including the rover's
- * name, its information, and recent photos.
- *
- * @param {string} roverName - The name of the rover selected by the user.
- *
- */
-
-const updateSelectedRover = (roverName) => {
-  fetchRoverData(roverName)
-    .then((newState) => {
-      return Immutable.Map(newState).merge({ selectedRover: roverName });
-    })
-    .then((newState) => {
-      updateStore(store, newState);
-    });
-};
-
-/**
- * Renders the application UI in the specified root element.
- *
- * This function is responsible for rendering the entire application UI based on the current
- * state. It dynamically generates HTML content and inserts it into the root DOM element.
- *
- * @param {HTMLElement} root - The root DOM element where the application UI is rendered.
- * @param {Object} state - The current state of the application.
- *
- */
-const render = (root, state) => {
-  root.innerHTML = App(state);
 };
 
 /**
@@ -89,7 +84,6 @@ const render = (root, state) => {
  * @returns {Promise<Object>} A promise that resolves to the rover data.
  *
  */
-
 const fetchRoverData = (selectedRover) => {
   return getRoverData(selectedRover)
     .then((data) => {
@@ -114,12 +108,81 @@ const fetchRoverData = (selectedRover) => {
 };
 
 /**
+ * Updates the selected rover in the state and fetches its data.
+ *
+ * This function is triggered when a user selects a rover from the UI. It fetches data for the
+ * selected rover and updates the application state with this new data, including the rover's
+ * name, its information, and recent photos.
+ *
+ * @param {string} roverName - The name of the rover selected by the user.
+ *
+ */
+const updateSelectedRover = (roverName) => {
+  fetchRoverData(roverName)
+    .then((newState) => {
+      return Immutable.Map(newState).merge({ selectedRover: roverName });
+    })
+    .then((newState) => {
+      updateStore(store, newState);
+    });
+};
+
+/**
+ * Handles the selection change event for the rover dropdown.
+ *
+ * @param {Event} event - The event object triggered on selection change.
+ */
+const selectOnChange = (e) => {
+  const roverName = e.target.value;
+  updateSelectedRover(roverName);
+};
+
+/**
  * Initializes the application when the window loads.
  * This function sets up the initial state of the application and triggers the first render
  * of the UI components.
  */
 window.onload = () => {
   render(root, store.toJS());
+};
+
+// ------------------------------------------------------  COMPONENTS
+
+/**
+ * Generates HTML content for the page title.
+ *
+ * @param {string} title - The title text to be displayed.
+ * @returns {string} HTML string representing the page title as an uppercase header element.
+ */
+const PageTitle = (title) => {
+  return `<h1 class="text-center py-3">${title.toUpperCase()}</h1>`;
+};
+
+/**
+ * Constructs a dropdown selector for choosing a Mars rover.
+ *
+ * @param {Array<string>} rovers - An array of available rover names.
+ * @param {string} selectedRover - The currently selected rover name.
+ * @returns {string} HTML string representing a dropdown selector for rovers.
+ */
+const RoversSelector = (rovers, selected) => {
+  return `
+          <div id="selectorContainer" class="row mt-5 mb-3">
+              <div class="col-md-4">
+                  <label for="exampleSelect" class="form-label">Select an Option</label>
+                  <select class="form-select" id="exampleSelect" aria-label="Select an option" onchange="selectOnChange(event)">
+                      <option value="" disabled ${
+                        selected === "" ? "selected" : ""
+                      }>Select a rover</option>
+                      ${rovers.map((rover) => {
+                        return rover === selected
+                          ? `<option value="${rover}" selected>${rover}</option>`
+                          : `<option value="${rover}">${rover}</option>`;
+                      })}
+                  </select>
+              </div>
+          </div>
+      `;
 };
 
 /**
@@ -133,49 +196,20 @@ window.onload = () => {
 const RoverInfo = ({ landingDate, launchDate, status }) => {
   if (landingDate && launchDate && status) {
     return `
-    <div class="col-md-4">
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">Rover Name</h5>
-            <p class="card-text">Launch Date: ${landingDate}</p>
-            <p class="card-text">Landing Date: ${launchDate}</p>
-            <p class="card-text">Status: ${status}</p>
-        </div>
-    </div>
-    </div>
-    `;
+      <div class="col-md-4">
+      <div class="card">
+          <div class="card-body">
+              <h5 class="card-title">Rover Name</h5>
+              <p class="card-text">Launch Date: ${landingDate}</p>
+              <p class="card-text">Landing Date: ${launchDate}</p>
+              <p class="card-text">Status: ${status}</p>
+          </div>
+      </div>
+      </div>
+      `;
   } else {
     return "";
   }
-};
-
-/**
- * Main function to construct and render the application's UI.
- *
- * @param {Object} state - The current state of the application, including rover data and
- *                         photos.
- * @returns {string} HTML string representing the entire application UI.
- */
-const App = (state) => {
-  let { rovers, selectedRover, rover, photos } = state;
-  return `
-    ${PageTitle("mars dashboard")}
-    ${RoversSelector(rovers, selectedRover)}
-    ${RoverInfo(rover)}
-    ${RoverPhotoGallery(photos)}
-    `;
-};
-
-// ------------------------------------------------------  COMPONENTS
-
-/**
- * Generates HTML content for the page title.
- *
- * @param {string} title - The title text to be displayed.
- * @returns {string} HTML string representing the page title as an uppercase header element.
- */
-const PageTitle = (title) => {
-  return `<h1 class="text-center py-3">${title.toUpperCase()}</h1>`;
 };
 
 /**
@@ -230,43 +264,6 @@ const RenderCards = (roverPhotos) => {
     .map((photo, i) => RenderCard(photo, `Photo #${i + 1}`))
     .join("");
   return result;
-};
-
-/**
- * Handles the selection change event for the rover dropdown.
- *
- * @param {Event} event - The event object triggered on selection change.
- */
-const selectOnChange = (e) => {
-  const roverName = e.target.value;
-  updateSelectedRover(roverName);
-};
-
-/**
- * Constructs a dropdown selector for choosing a Mars rover.
- *
- * @param {Array<string>} rovers - An array of available rover names.
- * @param {string} selectedRover - The currently selected rover name.
- * @returns {string} HTML string representing a dropdown selector for rovers.
- */
-const RoversSelector = (rovers, selected) => {
-  return `
-        <div id="selectorContainer" class="row mt-5 mb-3">
-            <div class="col-md-4">
-                <label for="exampleSelect" class="form-label">Select an Option</label>
-                <select class="form-select" id="exampleSelect" aria-label="Select an option" onchange="selectOnChange(event)">
-                    <option value="" disabled ${
-                      selected === "" ? "selected" : ""
-                    }>Select a rover</option>
-                    ${rovers.map((rover) => {
-                      return rover === selected
-                        ? `<option value="${rover}" selected>${rover}</option>`
-                        : `<option value="${rover}">${rover}</option>`;
-                    })}
-                </select>
-            </div>
-        </div>
-    `;
 };
 
 // ------------------------------------------------------  API CALLS
