@@ -1,19 +1,27 @@
-let store = {
-  user: { name: "Student" },
-  apod: "",
+let store = Immutable.Map({
   rovers: ["Curiosity", "Opportunity", "Spirit"],
-  selectedRover: "Curiosity",
+  selectedRover: "",
   rover: {},
   photos: [],
-};
+});
 
 // add our markup to the page
 const root = document.getElementById("root");
 
 const updateStore = (store, newState) => {
-  store = Object.assign(store, newState);
-  console.log(store);
-  render(root, store);
+  //   store = Object.assign(store, newState);
+  store = store.merge(newState);
+  render(root, store.toJS());
+};
+
+const updateSelectedRover = (roverName) => {
+  fetchRoverData(roverName)
+    .then((newState) => {
+      return Immutable.Map(newState).merge({ selectedRover: roverName });
+    })
+    .then((newState) => {
+      updateStore(store, newState);
+    });
 };
 
 const render = (root, state) => {
@@ -27,10 +35,9 @@ const getRoverData = (rover) => {
     .then((data) => data.slice(0, 5));
 };
 
-const fetchRoverData = ({ selectedRover }) => {
-  getRoverData(selectedRover)
+const fetchRoverData = (selectedRover) => {
+  return getRoverData(selectedRover)
     .then((data) => {
-      console.log(data);
       const rover = data[0].rover;
       const newState = {
         rover: {
@@ -46,18 +53,20 @@ const fetchRoverData = ({ selectedRover }) => {
           };
         }),
       };
-      console.log(newState);
-      updateStore(store, newState);
+      // console.log(newState);
+      //updateStore(store, newState);
+      return newState;
     })
     .catch(console.error);
 };
 
 window.onload = () => {
-  fetchRoverData(store);
+  render(root, store.toJS());
 };
 
 const RoverInfo = ({ landingDate, launchDate, status }) => {
-  return `
+  if (landingDate && launchDate && status) {
+    return `
     <div class="col-md-4">
     <div class="card">
         <div class="card-body">
@@ -69,6 +78,9 @@ const RoverInfo = ({ landingDate, launchDate, status }) => {
     </div>
     </div>
     `;
+  } else {
+    return "";
+  }
 };
 
 // create content
@@ -89,9 +101,9 @@ const ImageOfTheDay = (apod) => {
   // If image does not already exist, or it is not from today -- request it again
   const today = new Date();
   const photodate = new Date(apod.date);
-  console.log(photodate.getDate(), today.getDate());
+  // console.log(photodate.getDate(), today.getDate());
 
-  console.log(photodate.getDate() === today.getDate());
+  // console.log(photodate.getDate() === today.getDate());
   if (!apod || apod.date === today.getDate()) {
     getImageOfTheDay(store);
   }
@@ -148,29 +160,33 @@ const RenderCards = (roverPhotos) => {
   return result;
 };
 
-const updateSelectedRover = (rover) => {
-  if (
-    store.rovers.findIndex((r) => r.toUpperCase() == rover.toUpperCase()) === -1
-  ) {
-    throw new Error(`The rover must be one of ${store.rovers}`);
-  }
-  store.selectedRover = rover;
-  updateRoverData(store);
-};
+// const updateSelectedRover = (rover) => {
+//   if (
+//     store.rovers.findIndex((r) => r.toUpperCase() == rover.toUpperCase()) === -1
+//   ) {
+//     throw new Error(`The rover must be one of ${store.rovers}`);
+//   }
+//   store.selectedRover = rover;
+//   updateRoverData(store);
+// };
 
 const selectOnChange = (e) => {
   const roverName = e.target.value;
-  store.selectedRover = roverName;
-  fetchRoverData(store);
+  //   store = roverName;
+  //   fetchRoverData(store.get("selectedRover"));
+  updateSelectedRover(roverName);
 };
 
 const RoversSelector = (rovers, selected) => {
-  console.log(selected);
+  //console.log(selected);
   return `
         <div id="selectorContainer" class="row mt-5 mb-3">
             <div class="col-md-4">
                 <label for="exampleSelect" class="form-label">Select an Option</label>
                 <select class="form-select" id="exampleSelect" aria-label="Select an option" onchange="selectOnChange(event)">
+                    <option value="" disabled ${
+                      selected === "" ? "selected" : ""
+                    }>Select a rover</option>
                     ${rovers.map((rover) => {
                       return rover === selected
                         ? `<option value="${rover}" selected>${rover}</option>`
